@@ -1,4 +1,6 @@
 ﻿using Newtonsoft.Json;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,8 +18,8 @@ namespace POBC.TaskSystem
 	public class RandomTask
 	{
 		public string Name;
-		public int[] Reward;
-		public string Time;
+		public ArrayList Reward;
+		public DateTime Time;
 	}
 	public class DBData
 	{

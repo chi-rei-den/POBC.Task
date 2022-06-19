@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -71,9 +72,45 @@ namespace POBC.TaskSystem
                 });
                 Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemPick, "/tasklist", "/接收任务")
                 {
-                    HelpText = "接受任务时 随机5项任务选择1项 可以接受单个任务，为了提高任务的难度放弃任务和刷新可接受任务有CD时间 /n 主线任务默认自动接取"
-                });                
+                    HelpText = "接受任务时 随机5项任务选择1项 可以接受单个任务，为了提高任务的难度放弃任务和刷新可接受任务有CD时间 /n 主线任务默认接取"
+                });
+                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemf5, "/taskf5", "/刷新任务")
+                {
+                    HelpText = "刷新随机支线任务可接取列表，注意刷新时间冷却 .主线任务不可刷新"
+                });
 
+            }
+
+            private void _TaskSystemf5(CommandArgs args)
+            {
+                if (!Model.RandomTasks.Exists(t => t.Name == args.Player.Name)) //刷新任务
+                {
+                    var Random = getRadom(5, 0, Model.RegionalTaskLists.Count());
+                    Model.RandomTasks.Add(new RandomTask() { Name = args.Player.Name, Reward = Random, Time = DateTime.Now });
+                    args.Player.SendErrorMessage("任务已刷新");
+                    foreach (int item in Random)
+                    {
+                        args.Player.SendErrorMessage("任务ID" + item + " 任务名称" + Model.RegionalTaskLists.Find(t => t.ID == item).Name + " 任务信息" + Model.RegionalTaskLists.Find(t => t.ID == item).Info );
+                    }
+                }
+                DateTime Date = DateTime.Now;
+                if (Model.RandomTasks.Find(t => t.Name == args.Player.Name).Time.AddSeconds(10) < Date)
+                {
+                    Model.RandomTasks.Find(t => t.Name == args.Player.Name).Time = Date;
+                    var Random = getRadom(5, 0, Model.RegionalTaskLists.Count());
+                    Model.RandomTasks.Find(t => t.Name == args.Player.Name).Reward = Random;
+                    args.Player.SendErrorMessage("任务已刷新");
+                    foreach (int item in Random)
+                    {
+                        args.Player.SendErrorMessage("任务ID" + item + " 任务名称" + Model.RegionalTaskLists.Find(t => t.ID == item).Name + " 任务信息" + Model.RegionalTaskLists.Find(t => t.ID == item).Info);
+                    }
+                }
+                else
+                {
+                    args.Player.SendErrorMessage("任务刷新时间冷却中");
+                }
+                
+                
             }
 
             private void _TaskSystemPick(CommandArgs args)
@@ -99,42 +136,111 @@ namespace POBC.TaskSystem
                                 //接受任务
                                 try
                                 {
+                                    if (!Db.Queryuser(args.Player.Name))
+                                    {
+                                        Db.Adduser(new DBData() { UserName = args.Player.Name, MianTaskUser = Model.MainTaskLists[0].Name, MianTaskData = null, MianTaskCompleted = 0, RegionalTaskUser = null, RegionalTaskData = null, RegionalCompleted = 0 });
+                                        args.Player.SendErrorMessage("当前接受主线任务为" + Model.MainTaskLists[0].Name);
+                                        args.Player.SendErrorMessage("任务信息:" + Model.MainTaskLists[0].Info);
+                                    }                                    
                                     DBData dBData = Db.QueryData(args.Player.Name);
                                     if (dBData.UserName != null)
                                     {
                                         args.Player.SendErrorMessage("您已接受任务" + dBData.MianTaskUser + "不能再次领取任务");
+                                        args.Player.SendErrorMessage("任务信息:" + Model.MainTaskLists[dBData.RegionalCompleted].Info);
                                         return;
                                     }
-                                    if (!Db.Queryuser(args.Player.Name))
-                                    {
-                                        args.Player.SendErrorMessage("当前接受主线任务为" + Model.MainTaskLists[dBData.RegionalCompleted].Name);
-                                        args.Player.SendErrorMessage("任务信息:"+ Model.MainTaskLists[dBData.RegionalCompleted].Info);
-                                       
-                                    }
 
-                                    
+
                                 }
-                                catch (Exception)
+                                catch (Exception ex)
                                 {
                                     args.Player.SendErrorMessage("任务接受失败");
+                                    TShock.Log.ConsoleError("[POBCTask] 任务接受失败!\n{0}".SFormat(ex.ToString()));
                                     throw;
                                 }
                             }
+                            break;
+                        }
+                    case "支线":
+                        {
+
+                            //接受支线任务
+                            if (args.Parameters.Count == 2)
+                            {
+                                if (!int.TryParse(args.Parameters[2], out int tmp))
+                                {
+                                    args.Player.SendErrorMessage("请输入正确的任务ID");
+                                    return;
+                                }
+                                if (Model.MainTaskLists.Count() == 0)
+                                {
+                                    args.Player.SendErrorMessage("没有支线任务");
+                                    return;
+                                }
+                                //接受任务
+                                try
+                                {
+                                    if (!Model.RandomTasks.Exists(t => t.Name == args.Player.Name)) //刷新任务
+                                    {
+                                        var Random = getRadom(5, 0, Model.RegionalTaskLists.Count());
+                                        Model.RandomTasks.Add(new RandomTask() { Name = args.Player.Name, Reward = Random, Time = DateTime.Now });
+                                    }
+                                    //查询数据库没有用户时添加用户
+                                    if (!Db.Queryuser(args.Player.Name))
+                                    {
+                                        Db.Adduser(new DBData() { UserName = args.Player.Name, MianTaskUser = null, MianTaskData = null, MianTaskCompleted = 0, RegionalTaskUser = Model.RegionalTaskLists.Find(t => t.ID==int.Parse(args.Parameters[2])).Name, RegionalTaskData = null, RegionalCompleted = 0 });
+                                        args.Player.SendErrorMessage("当前接受支线任务为" + Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Name);
+                                        args.Player.SendErrorMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Info);
+                                        return;
+                                    }
+                                    DBData dBData = Db.QueryData(args.Player.Name);
+                                    if (dBData.RegionalTaskUser != null)
+                                    {
+                                        args.Player.SendErrorMessage("您已接受任务" + dBData.RegionalTaskUser + "不能再次领取任务");
+
+                                         args.Player.SendErrorMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Info);
+   
+                                        
+                                        return;
+                                    }
 
 
+                                }
+                                catch (Exception ex)
+                                {
+                                    args.Player.SendErrorMessage("任务接受失败");
+                                    TShock.Log.ConsoleError("[POBCTask] 任务接受失败!\n{0}".SFormat(ex.ToString()));
+                                    throw;
+                                }
+                               
+                            }
+                            break;
 
                         }
-                        break;                        
-                    default:
-                        break;
+
                 }
-
-
-
-
-
-
             }
+
+            /// <summary>
+            /// 产生随机数
+            /// </summary>
+            /// <param name="len">产生随机数的个数</param>
+            /// <param name="min">随机数的下界</param>
+            /// <param name="max">随机数的上界</param>
+            /// <returns></returns>
+            private ArrayList getRadom(int len, int min, int max)
+            {
+                Random r = new Random();
+                ArrayList al = new ArrayList();
+                for (int i = 0; i < len; i++)
+                {
+                    al.Add(r.Next(min, max));
+                }
+                return al;
+            }
+
+
+
 
             private void _TaskSystemList(CommandArgs args)
             {

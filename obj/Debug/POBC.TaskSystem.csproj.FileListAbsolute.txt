@@ -1,0 +1,2 @@
+F:\仓库\GitHub\pobc\POBC.Task\obj\Debug\POBC.TaskSystem.csproj.AssemblyReference.cache
+F:\仓库\GitHub\pobc\POBC.Task\obj\Debug\POBC.TaskSystem.csproj.CoreCompileInputs.cache

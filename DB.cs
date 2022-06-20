@@ -69,6 +69,15 @@ namespace POBC.TaskSystem
             return dBData;
         }
 
+        public static void UPData(DBData dBData)
+        {
+
+            TShock.DB.Query("UPDATE POBCTask SET MianTaskUser = @0,MianTaskData = @1,MianTaskCompleted = @2,RegionalTaskUser = @3,RegionalTaskData = @4,RegionalCompleted = @5 WHERE UserName = @6", dBData.MianTaskUser, dBData.MianTaskData, dBData.MianTaskCompleted, dBData.RegionalTaskUser, dBData.RegionalTaskData, dBData.RegionalCompleted, dBData.UserName);
+
+        }
+
+
+
         public static void Adduser(DBData dBData)
         {
             TShock.DB.Query("INSERT INTO POBC (UserName,MianTaskUser,MianTaskData,MianTaskCompleted,RegionalTaskUser,RegionalTaskData,RegionalCompleted) VALUES (@0,@1,@2,@3,@4,@5,@6)", dBData.UserName, dBData.MianTaskUser, dBData.MianTaskData, dBData.MianTaskCompleted, dBData.RegionalTaskUser, dBData.RegionalTaskData, dBData.RegionalCompleted);          

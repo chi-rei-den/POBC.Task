@@ -19,7 +19,8 @@ namespace POBC.TaskSystem
 	{
 		public string Name;
 		public ArrayList Reward;
-		public DateTime Time;
+		public DateTime F5Time;
+		public DateTime GiveTime;
 	}
 	public class DBData
 	{

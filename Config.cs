@@ -32,7 +32,12 @@ namespace POBC.TaskSystem
 				Name = "任务名称",
 				Type = "主线",
 				Info = "任务信息",
-                DetailedInfo = "任务详细信息",
+				DetailedInfo = "任务详细信息",
+                Conditions = new _Conditions[] 
+				{
+				 new _Conditions(){ TaskType ="1",Condition="2"},new _Conditions(){ TaskType="2",Condition="4"}
+				
+				},
                 Reward = new string[]
 				{
 					"/BC 这是服务器公告",
@@ -54,7 +59,13 @@ namespace POBC.TaskSystem
 		public string Name;
 		public string Info;
         public string DetailedInfo;
+		public _Conditions[] Conditions;
         public string[] Reward;
+	}
+	public class _Conditions
+	{
+		public string TaskType;
+		public string Condition;
 	}
 }
 

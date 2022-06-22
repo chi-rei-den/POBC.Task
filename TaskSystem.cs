@@ -58,18 +58,32 @@ namespace POBC.TaskSystem
             public override void Initialize()
             {
                 ServerApi.Hooks.GameInitialize.Register(this, OnInitialize);
+                ServerApi.Hooks.NpcKilled.Register(this, NpcKill);
                 File();
+            }
+
+            private void NpcKill(NpcKilledEventArgs args)
+            {
+                if (Model.MainTaskLists.Count == 0) return;
+                //获取NPC击杀玩家
+                var player = TShock.Players[args.]; //yuqing： Md 突然发现 获取不了 击杀NPC的 玩家ID 。。。卡住了
+
+
             }
 
             private void OnInitialize(EventArgs args)
             {
-                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystem, "/task","/任务","任务系统说明")
+                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystem, "/task","/任务")
                 {
                     HelpText = " POBC 任务系统"
                 });
-                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemList, "/tasklist","/任务列表", "任务列表")
+                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemList, "/tasklist","/任务列表" )
                 {
                     HelpText = " POBC 任务系统 所有任务"
+                });
+                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemQuery, "/taskquery", "/任务查询")
+                {
+                    HelpText = " POBC 任务系统 通过id或任务名称 查询任务信息"
                 });
                 Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemPick, "/tasklist", "/接收任务")
                 {
@@ -87,6 +101,30 @@ namespace POBC.TaskSystem
                 {
                     HelpText = "完成任务 ， 并获取奖励"
                 });
+            }
+
+            private void _TaskSystemQuery(CommandArgs args)
+            {
+                if (args.Parameters.Count < 1)
+                {
+                    args.Player.SendErrorMessage("/查询任务 id或任务名称");
+                    return;
+                }
+                var AllTask = Model.MainTaskLists.Concat(Model.RegionalTaskLists).ToList<_TaskList>();
+                var Task = AllTask.FirstOrDefault(x => x.Name == args.Parameters[0] || x.ID.ToString() == args.Parameters[0]);
+                if (Task == null)
+                {
+                    args.Player.SendErrorMessage("没有找到任务");
+                    return;
+                }
+                args.Player.SendInfoMessage("任务ID：" + Task.ID);
+                args.Player.SendInfoMessage("任务类型：" + Task.Type);
+                args.Player.SendInfoMessage("任务名称：" + Task.Name);
+                args.Player.SendInfoMessage("任务描述：" + Task.Info);
+                args.Player.SendInfoMessage("详细信息：" + Task.DetailedInfo);
+               // args.Player.SendInfoMessage("任务条件：" + Task.Conditions.ToString());
+                //args.Player.SendInfoMessage("任务奖励：" + Task.Reward);
+                
             }
 
             private void _TaskSystemOver(CommandArgs args)
@@ -113,165 +151,189 @@ namespace POBC.TaskSystem
                         {
                             args.Player.SendErrorMessage("没有接受的主线任务");
                         }
-                        //获取主线任务
+                        //获取主线任务 
                         var _MainTask = Model.MainTaskLists.Where(x => x.Name == Db.QueryData(args.Player.Name).MianTaskUser).FirstOrDefault();
-                        //检测是否完成任务
-                        foreach (var item in _MainTask.Conditions)
+                        Tasklogic(args, _MainTask);
+                        break;
+                    case "支线":
+                        if (Model.RegionalTaskLists.Count == 0)
                         {
-                            switch (item.TaskType)
-                            {
-                                //任务类型0 消耗物品完成任务
-                                case "0":
-                                    {
-                                        var _item = item.Condition.Split(',');
-                                        for (int i = 10; i < 49; i++) //背包从第二排开始到最后一个背包位置
-                                        {
-                                            if (args.TPlayer.inventory[i].netID == Convert.ToInt32(_item[0]))
-                                            {
-                                                if (args.TPlayer.inventory[i].stack >= Convert.ToInt32(_item[1]))
-                                                {
-                                                    //  args.TPlayer.inventory[i].stack -= Convert.ToInt32(_item[1]);
-                                                    break;
-                                                }
-                                                else
-                                                {
-                                                    args.Player.SendErrorMessage("没有足够的物品");
-                                                    return;
-                                                }
-                                            }
-                                            else
-                                            {
-                                                args.Player.SendErrorMessage("您的背包中没有任务物品：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
-                                                args.Player.SendInfoMessage("任务物品请不要放在背包最上排中");
-                                                return;
-                                            }
-                                        }
-
-                                    }
-                                    break;
-                                //任务类型1 背包中是否有指定物品
-                                case "1":
-                                    {
-                                        for (int i = 0; i < 49; i++) //背包从第二排开始到最后一个背包位置
-                                        {
-                                            if (args.TPlayer.inventory[i].netID.ToString() == item.Condition)
-                                            {
-                                                break;
-                                            }
-                                            else
-                                            {
-                                                args.Player.SendErrorMessage("您的背包中没有任务物品：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
-                                                return;
-                                            }
-                                        }
-
-                                    }
-                                    break;
-                                //任务类型2 是否击杀指定NPC
-                                case "2":
-                                    {
-                                        if (int.Parse(Db.QueryData(args.Player.Name).MianTaskData) >= int.Parse(item.Condition))
-                                        {
-                                            continue;
-                                        }
-                                        else
-                                        {
-                                            args.Player.SendErrorMessage("您没有击杀指定NPC或击杀数量不足：任务数量" + item.Condition + " 实际数量" + Db.QueryData(args.Player.Name).MianTaskData);
-                                            return;
-                                        }
-                                    }
-                                //任务类型3 到达指定地图区域
-                                case "3":
-                                    {
-                                        var Coordinate = item.Condition.Split(',');
-                                        int x = int.Parse(Coordinate[0]);
-                                        int y = int.Parse(Coordinate[1]);
-                                        int deviation = int.Parse(Coordinate[2]);
-                                        if (args.Player.X >= (x - deviation) && args.Player.X <= (x + deviation) && args.Player.Y >= (y - deviation) && args.Player.Y <= (y + deviation))
-                                        {
-                                            continue;
-                                        }
-                                        else
-                                        {
-                                            args.Player.SendErrorMessage("您没有到达指定地图区域：您的坐标" + args.Player.X + "," + args.Player.Y + " 指定区域" + x + "," + y + " 允许偏差" + deviation);
-                                            return;
-                                        }
-                                    }
-                                //穿戴或拿起指定装备
-                                case "4":
-                                    {
-                                        for (int i = 50; i < 99; i++)
-                                        {
-                                            if (args.TPlayer.inventory[i].netID.ToString() == item.Condition)
-                                            {
-                                                break;
-                                            }
-                                            else
-                                            {
-                                                args.Player.SendErrorMessage("您未穿戴或拿起指定装备：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
-                                                return;
-                                            }
-                                        }
-                                    }
-                                    break;
-                                //拥有指定buff
-                                case "5":
-                                    {
-                                        if (args.TPlayer.buffType.Contains(int.Parse(item.Condition)))
-                                        {
-                                            continue;
-                                        }
-                                        else
-                                        {
-                                            args.Player.SendErrorMessage("您没有拥有指定buff： BUFF ID:" + item.Condition);
-                                            return;
-                                        }
-                                    }
-                                default:
-                                    {
-                                        args.Player.SendErrorMessage("请确认配置文件中 TaskType 值是否正确");
-                                        return;
-
-                                    }
-                            }
+                            args.Player.SendErrorMessage("没有支线任务");
+                            return;
                         }
-                        //消耗任务物品
-                        var _itemTask = _MainTask.Conditions.Where(x => x.TaskType == "0");
-                        foreach (var item in _itemTask)
+                        if (!Db.Queryuser(args.Player.Name))
                         {
-                            var _item = item.Condition.Split(',');
-                            for (int i = 10; i < 49; i++) //背包从第二排开始到最后一个背包位置
+                            args.Player.SendErrorMessage("没有接受的支线任务");
+                        }
+                        if (Db.QueryData(args.Player.Name).RegionalTaskUser == null)
+                        {
+                            args.Player.SendErrorMessage("没有接受的支线任务");
+                        }
+                        //获取支线任务
+                        var _RegionalTask = Model.RegionalTaskLists.Where(x => x.Name == Db.QueryData(args.Player.Name).RegionalTaskUser).FirstOrDefault();
+                        Tasklogic(args, _RegionalTask);
+                        break;
+                }
+                
+                
+            }
+            
+            //任务判定与任务类型 奖励给予等逻辑核心
+            private void Tasklogic(CommandArgs args ,_TaskList Tasklist)
+            {
+                foreach (var item in Tasklist.Conditions)
+                {
+                    switch (item.TaskType)
+                    {
+                        //任务类型0 消耗物品完成任务
+                        case "0":
                             {
-                                if (args.TPlayer.inventory[i].netID == Convert.ToInt32(_item[0]))
+                                var _item = item.Condition.Split(',');
+                                for (int i = 10; i < 49; i++) //背包从第二排开始到最后一个背包位置
                                 {
-                                    if (args.TPlayer.inventory[i].stack >= Convert.ToInt32(_item[1]))
+                                    if (args.TPlayer.inventory[i].netID == Convert.ToInt32(_item[0]))
                                     {
-                                        var stack = args.TPlayer.inventory[i].stack -= Convert.ToInt32(_item[1]);
-                                        PlayItemSet(args.Player.Index, i, Convert.ToInt32(_item[0]), stack);
+                                        if (args.TPlayer.inventory[i].stack >= Convert.ToInt32(_item[1]))
+                                        {
+                                            //  args.TPlayer.inventory[i].stack -= Convert.ToInt32(_item[1]);
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            args.Player.SendErrorMessage("没有足够的物品");
+                                            return;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        args.Player.SendErrorMessage("您的背包中没有任务物品：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
+                                        args.Player.SendInfoMessage("任务物品请不要放在背包最上排中");
+                                        return;
+                                    }
+                                }
+
+                            }
+                            break;
+                        //任务类型1 背包中是否有指定物品
+                        case "1":
+                            {
+                                for (int i = 0; i < 49; i++) //背包从第二排开始到最后一个背包位置
+                                {
+                                    if (args.TPlayer.inventory[i].netID.ToString() == item.Condition)
+                                    {
                                         break;
                                     }
                                     else
                                     {
-                                        args.Player.SendErrorMessage("没有足够的物品");
+                                        args.Player.SendErrorMessage("您的背包中没有任务物品：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
+                                        return;
+                                    }
+                                }
+
+                            }
+                            break;
+                        //任务类型2 是否击杀指定NPC
+                        case "2":
+                            {
+                                if (int.Parse(Db.QueryData(args.Player.Name).MianTaskData) >= int.Parse(item.Condition))
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    args.Player.SendErrorMessage("您没有击杀指定NPC或击杀数量不足：任务数量" + item.Condition + " 实际数量" + Db.QueryData(args.Player.Name).MianTaskData);
+                                    return;
+                                }
+                            }
+                        //任务类型3 到达指定地图区域
+                        case "3":
+                            {
+                                var Coordinate = item.Condition.Split(',');
+                                int x = int.Parse(Coordinate[0]);
+                                int y = int.Parse(Coordinate[1]);
+                                int deviation = int.Parse(Coordinate[2]);
+                                if (args.Player.X >= (x - deviation) && args.Player.X <= (x + deviation) && args.Player.Y >= (y - deviation) && args.Player.Y <= (y + deviation))
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    args.Player.SendErrorMessage("您没有到达指定地图区域：您的坐标" + args.Player.X + "," + args.Player.Y + " 指定区域" + x + "," + y + " 允许偏差" + deviation);
+                                    return;
+                                }
+                            }
+                        //穿戴或拿起指定装备
+                        case "4":
+                            {
+                                for (int i = 50; i < 99; i++)
+                                {
+                                    if (args.TPlayer.inventory[i].netID.ToString() == item.Condition)
+                                    {
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        args.Player.SendErrorMessage("您未穿戴或拿起指定装备：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
                                         return;
                                     }
                                 }
                             }
-                        }
+                            break;
+                        //拥有指定buff
+                        case "5":
+                            {
+                                if (args.TPlayer.buffType.Contains(int.Parse(item.Condition)))
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    args.Player.SendErrorMessage("您没有拥有指定buff： BUFF ID:" + item.Condition);
+                                    return;
+                                }
+                            }
+                        default:
+                            {
+                                args.Player.SendErrorMessage("请确认配置文件中 TaskType 值是否正确");
+                                return;
 
-                        //给与奖励物品
-                        foreach (var item in _MainTask.Reward)
-                        {
-                            Commands.HandleCommand(TSPlayer.Server, item.Replace("{name}", args.Player.Name));
-                        }
-
-                        break;        
+                            }
+                    }
                 }
-                
+                //消耗任务物品
+                var _itemTask = Tasklist.Conditions.Where(x => x.TaskType == "0");
+                foreach (var item in _itemTask)
+                {
+                    var _item = item.Condition.Split(',');
+                    for (int i = 10; i < 49; i++) //背包从第二排开始到最后一个背包位置
+                    {
+                        if (args.TPlayer.inventory[i].netID == Convert.ToInt32(_item[0]))
+                        {
+                            if (args.TPlayer.inventory[i].stack >= Convert.ToInt32(_item[1]))
+                            {
+                                var stack = args.TPlayer.inventory[i].stack -= Convert.ToInt32(_item[1]);
+                                PlayItemSet(args.Player.Index, i, Convert.ToInt32(_item[0]), stack);
+                                break;
+                            }
+                            else
+                            {
+                                args.Player.SendErrorMessage("没有足够的物品");
+                                return;
+                            }
+                        }
+                    }
+                }
+                //给与奖励
 
-            } 
+                //给与奖励物品
+                foreach (var item in Tasklist.Reward)
+                {
+                    Commands.HandleCommand(TSPlayer.Server, item.Replace("{name}", args.Player.Name));
+                }
+                  
 
-
+            }
+          
             private void _TaskSystemGive(CommandArgs args)
             {
                 //放弃支线任务
@@ -284,7 +346,7 @@ namespace POBC.TaskSystem
                     args.Player.SendErrorMessage("您没有接受支线任务");
                 }
                 DateTime now = DateTime.Now;
-                if(Model.RandomTasks.Find(t=>t.Name==args.Player.Name).GiveTime.AddSeconds(10)<now)
+                if (Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime.AddSeconds(10) < now)
                 {
                     Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime = now;
                     DBData dBData = Db.QueryData(args.Player.Name);
@@ -296,7 +358,7 @@ namespace POBC.TaskSystem
                 }
                 else
                 {
-                    args.Player.SendWarningMessage("放弃任务冷却中 上次放弃时间"+ Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime + "CD时间 10S");
+                    args.Player.SendWarningMessage("放弃任务冷却中 上次放弃时间" + Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime + "CD时间 10S");
                 }
 
             }

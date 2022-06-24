@@ -21,10 +21,10 @@ namespace POBC.TaskSystem
                 new SqlColumn("ID", MySqlDbType.Int32) { Primary = true, Unique = true, Length = 7, AutoIncrement = true },
                 new SqlColumn("UserName", MySqlDbType.Text) { Length = 500 },
                 new SqlColumn("MianTaskUser", MySqlDbType.Text) { Length = 500 },
-                new SqlColumn("MianTaskData", MySqlDbType.Text) { Length = 500 },
+                new SqlColumn("MianTaskData", MySqlDbType.Int32) { Length = 255 },
                 new SqlColumn("MianTaskCompleted", MySqlDbType.Int32) { Length = 255 },
                 new SqlColumn("RegionalTaskUser", MySqlDbType.Text) { Length = 500 },
-                new SqlColumn("RegionalTaskData", MySqlDbType.Text) { Length = 500 },
+                new SqlColumn("RegionalTaskData", MySqlDbType.Int32) { Length = 255 },
                 new SqlColumn("RegionalCompleted", MySqlDbType.Int32) { Length = 255 }));      
         }
         public static bool Queryuser(string user)
@@ -55,10 +55,10 @@ namespace POBC.TaskSystem
                     //dBData.ID = reader.Get<int>("ID");
                     dBData.UserName = reader.Get<string>("UserName");
                     dBData.MianTaskUser = reader.Get<string>("MianTaskUser");
-                    dBData.MianTaskData = reader.Get<string>("MianTaskData");
+                    dBData.MianTaskData = reader.Get<int>("MianTaskData");
                     dBData.MianTaskCompleted = reader.Get<int>("MianTaskCompleted");
                     dBData.RegionalTaskUser = reader.Get<string>("RegionalTaskUser");
-                    dBData.RegionalTaskData = reader.Get<string>("RegionalTaskData");
+                    dBData.RegionalTaskData = reader.Get<int>("RegionalTaskData");
                     dBData.RegionalCompleted = reader.Get<int>("RegionalCompleted");
                 }
                 else
@@ -80,7 +80,7 @@ namespace POBC.TaskSystem
 
         public static void Adduser(DBData dBData)
         {
-            TShock.DB.Query("INSERT INTO POBC (UserName,MianTaskUser,MianTaskData,MianTaskCompleted,RegionalTaskUser,RegionalTaskData,RegionalCompleted) VALUES (@0,@1,@2,@3,@4,@5,@6)", dBData.UserName, dBData.MianTaskUser, dBData.MianTaskData, dBData.MianTaskCompleted, dBData.RegionalTaskUser, dBData.RegionalTaskData, dBData.RegionalCompleted);          
+            TShock.DB.Query("INSERT INTO POBCTask (UserName,MianTaskUser,MianTaskData,MianTaskCompleted,RegionalTaskUser,RegionalTaskData,RegionalCompleted) VALUES (@0,@1,@2,@3,@4,@5,@6)", dBData.UserName, dBData.MianTaskUser, dBData.MianTaskData, dBData.MianTaskCompleted, dBData.RegionalTaskUser, dBData.RegionalTaskData, dBData.RegionalCompleted);          
         }
     }
 

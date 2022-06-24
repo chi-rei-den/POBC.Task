@@ -1,2 +1,7 @@
 F:\仓库\GitHub\pobc\POBC.Task\obj\Debug\POBC.TaskSystem.csproj.AssemblyReference.cache
 F:\仓库\GitHub\pobc\POBC.Task\obj\Debug\POBC.TaskSystem.csproj.CoreCompileInputs.cache
+C:\Users\cy332\Desktop\Tshock4.5.17\ServerPlugins\TaskSystem.dll
+C:\Users\cy332\Desktop\Tshock4.5.17\ServerPlugins\TaskSystem.pdb
+F:\仓库\GitHub\pobc\POBC.Task\obj\Debug\POBC.TaskSystem.csproj.CopyComplete
+F:\仓库\GitHub\pobc\POBC.Task\obj\Debug\TaskSystem.dll
+F:\仓库\GitHub\pobc\POBC.Task\obj\Debug\TaskSystem.pdb

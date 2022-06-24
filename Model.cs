@@ -27,10 +27,10 @@ namespace POBC.TaskSystem
 		//public int ID;
 		public string UserName;
 		public string MianTaskUser;
-		public string MianTaskData;
+		public int MianTaskData;
 		public int MianTaskCompleted;
 		public string RegionalTaskUser;
-		public string RegionalTaskData;
+		public int RegionalTaskData;
 		public int RegionalCompleted;        
 	}
 }

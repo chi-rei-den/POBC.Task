@@ -252,13 +252,14 @@ namespace POBC.TaskSystem
                         case "0":
                             {
                                 var _item = item.Condition.Split(',');
+                                bool item_bool = false;
                                 for (int i = 10; i < 49; i++) //背包从第二排开始到最后一个背包位置
                                 {
                                     if (args.TPlayer.inventory[i].netID == Convert.ToInt32(_item[0]))
                                     {
                                         if (args.TPlayer.inventory[i].stack >= Convert.ToInt32(_item[1]))
                                         {
-                                            //  args.TPlayer.inventory[i].stack -= Convert.ToInt32(_item[1]);
+                                            item_bool = true;
                                             break;
                                         }
                                         else
@@ -267,32 +268,39 @@ namespace POBC.TaskSystem
                                             return false;
                                         }
                                     }
-
                                 }
-                                Item _item1 = new Item();
-                                _item1.netID = Convert.ToInt32(_item[0]);
-                                args.Player.SendErrorMessage("您的背包中没有任务物品"+_item1.Name );
-                                args.Player.SendInfoMessage("任务物品请不要放在背包最上排中");
-                                return false;
+                                if (!item_bool)
+                                {
+                                    Item _item1 = new Item();
+                                    _item1.netID = Convert.ToInt32(_item[0]);
+                                    args.Player.SendErrorMessage("您的背包中没有任务物品" + _item1.Name);
+                                    args.Player.SendInfoMessage("任务物品请不要放在背包最上排中");
+                                    return false;
+                                }
+
 
                             }
                             break;
-                        //任务类型1 背包中是否有指定物品
+                        //任务类型1 背包中是否有指定物品  //测试完成
                         case "1":
                             {
+                                bool item_bool = false;
                                 for (int i = 0; i < 49; i++) //背包从第二排开始到最后一个背包位置
                                 {
                                     if (args.TPlayer.inventory[i].netID.ToString() == item.Condition)
                                     {
+                                        item_bool = true;
                                         break;
                                     }
-                                    else
-                                    {
-                                        args.Player.SendErrorMessage("您的背包中没有任务物品：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
-                                        return false;
-                                    }
                                 }
+                                if (!item_bool)
+                                {
+                                    Item _item1 = new Item();
+                                    _item1.netID = Convert.ToInt32( int.Parse(item.Condition));
+                                    args.Player.SendErrorMessage("您的背包中没有任务物品：" + _item1.Name + " " + item.Condition);
+                                    return false;
 
+                                }
                             }
                             break;
                         //任务类型2 是否击杀指定NPC //测试完成
@@ -305,7 +313,7 @@ namespace POBC.TaskSystem
                                 }
                                 else
                                 {
-                                    args.Player.SendErrorMessage("您没有击杀指定NPC或击杀数量不足(" + Main.npc[int.Parse(_item[0])].FullName + ") ：任务数量" + int.Parse(_item[1]) + " 实际数量" + Db.QueryData(args.Player.Name).MianTaskData);
+                                    args.Player.SendErrorMessage("您没有击杀指定NPC或击杀数量不足(" + new NPC() {netID= int.Parse(_item[0]) }.FullName + ") ：任务数量" + int.Parse(_item[1]) + " 实际数量" + Db.QueryData(args.Player.Name).MianTaskData);
                                     return false;
                                 }
                             }
@@ -326,20 +334,26 @@ namespace POBC.TaskSystem
                                     return false;
                                 }
                             }
-                        //穿戴或拿起指定装备
+                        //穿戴或拿起指定装备 //测试完成
                         case "4":
                             {
+                                bool item_bool = false;
                                 for (int i = 50; i < 99; i++)
                                 {
                                     if (args.TPlayer.inventory[i].netID.ToString() == item.Condition)
                                     {
+                                        item_bool = true;
                                         break;
                                     }
-                                    else
-                                    {
-                                        args.Player.SendErrorMessage("您未穿戴或拿起指定装备：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
-                                        return false;
-                                    }
+                                }
+                                if (!item_bool)
+                                {
+
+                                    Item _item1 = new Item();
+                                    _item1.netID = int.Parse(item.Condition);
+                                    args.Player.SendErrorMessage("您未穿戴或拿起指定装备：" + _item1.Name + " " + item.Condition);
+                                    return false;
+
                                 }
                             }
                             break;
@@ -455,12 +469,13 @@ namespace POBC.TaskSystem
                 if (!Model.RandomTasks.Exists(t => t.Name == args.Player.Name)) //刷新任务
                 {
                     var Random = getRadom(5, 1, Model.RegionalTaskLists.Count());
-                    Model.RandomTasks.Add(new RandomTask() { Name = args.Player.Name, Reward = Random, F5Time = DateTime.Now});
+                    Random = Random.Where((x, i) => Random.FindIndex(z => z == x) == i).ToList();
+                    Model.RandomTasks.Add(new RandomTask() { Name = args.Player.Name, Reward = Random, F5Time = DateTime.Now });
                     args.Player.SendErrorMessage("任务已刷新");
                     foreach (int item in Random)
                     {
-                        args.Player.SendErrorMessage("任务ID" + item + " 任务名称" + Model.RegionalTaskLists.Find(t => t.ID == item).Name + " 任务信息" + Model.RegionalTaskLists.Find(t => t.ID == item).Info );
-                       
+                        args.Player.SendErrorMessage("任务ID" + item + " 任务名称" + Model.RegionalTaskLists.Find(t => t.ID == item).Name + " 任务信息" + Model.RegionalTaskLists.Find(t => t.ID == item).Info);
+
                     }
                     return;
                 }
@@ -594,6 +609,7 @@ namespace POBC.TaskSystem
                                         Db.Adduser(new DBData() { UserName = args.Player.Name, MianTaskUser = null, MianTaskData = 0, MianTaskCompleted = 0, RegionalTaskUser = Model.RegionalTaskLists.Find(t => t.ID == taskid).Name, RegionalTaskData = 0, RegionalCompleted = 0 });
                                         args.Player.SendInfoMessage("当前接受支线任务为" + Model.RegionalTaskLists.Find(t => t.ID == taskid).Name);
                                         args.Player.SendInfoMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == taskid).Info);
+                                        Model.RandomTasks.Find(t => t.Name == args.Player.Name).Reward.Remove(taskid);
                                         return;
                                     }
                                     DBData dBData = Db.QueryData(args.Player.Name);
@@ -611,6 +627,7 @@ namespace POBC.TaskSystem
                                     Db.UPData(dBData);
                                     args.Player.SendInfoMessage("当前接受支线任务为" + Model.RegionalTaskLists.Find(t => t.ID == taskid).Name);
                                     args.Player.SendInfoMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == taskid).Info);
+                                    Model.RandomTasks.Find(t => t.Name == args.Player.Name).Reward.Remove(taskid);
                                     return;
 
                                 }
@@ -640,10 +657,10 @@ namespace POBC.TaskSystem
             /// <param name="min">随机数的下界</param>
             /// <param name="max">随机数的上界</param>
             /// <returns></returns>
-            private ArrayList getRadom(int len, int min, int max)
+            private List<int> getRadom(int len, int min, int max)
             {
                 Random r = new Random();
-                ArrayList al = new ArrayList();
+                List<int> al = new List<int>();
                 for (int i = 0; i < len; i++)
                 {
                     al.Add(r.Next(min, max));

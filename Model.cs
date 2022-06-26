@@ -18,7 +18,7 @@ namespace POBC.TaskSystem
 	public class RandomTask
 	{
 		public string Name;
-		public ArrayList Reward;
+		public List<int> Reward;
 		public DateTime F5Time;
 		public DateTime GiveTime;
 	}

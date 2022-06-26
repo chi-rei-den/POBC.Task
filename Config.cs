@@ -35,7 +35,7 @@ namespace POBC.TaskSystem
 				DetailedInfo = "任务详细信息",
                 Conditions = new _Conditions[] 
 				{
-				 new _Conditions(){ TaskType ="0",Condition="-15,1"},new _Conditions(){ TaskType="1",Condition="-15" },new _Conditions(){ TaskType="2",Condition="3"},new _Conditions(){ TaskType="3",Condition="100,100,50"},new _Conditions(){ TaskType="4",Condition="-16"}
+				 new _Conditions(){ TaskType ="0",Condition="-15,1"}
 
 				},
                 Reward = new string[]
@@ -43,7 +43,7 @@ namespace POBC.TaskSystem
 					"/BC 这是服务器公告",
 					"/BC 这是服务器公告"
 				}
-			};
+            };
 			var Conf = new TaskConfig()
 			{
 				TaskList = new _TaskList[] { Ex }

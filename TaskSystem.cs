@@ -68,6 +68,7 @@ namespace POBC.TaskSystem
             {
                 if (args.npc.lastInteraction == 255) return;
                 if (Model.MainTaskLists.Count == 0) return;
+                if (Model.RegionalTaskLists.Count == 0) return;
                 var player = TShock.Players[args.npc.lastInteraction];
                 DBData dBData = new DBData();
                 if (Db.Queryuser(player.Name))
@@ -76,43 +77,56 @@ namespace POBC.TaskSystem
                 }
                 else return;
                 if (dBData.MianTaskUser == null & dBData.RegionalTaskUser ==null) return;
-                if (Model.MainTaskLists.Where(x => x.Name == dBData.MianTaskUser).FirstOrDefault().Conditions.Where(x => x.TaskType == "2") != null)
+                if (dBData.MianTaskUser!=null)
                 {
-                    dBData.MianTaskData += 1;
-                    Db.UPData(dBData);
-                    player.SendInfoMessage("你击杀了 " + args.npc.FullName + " ,已击杀" + dBData.MianTaskData + "个怪物");
+                    if (Model.MainTaskLists.Find(x => x.Name == dBData.MianTaskUser).Conditions.Any(x => x.TaskType == "2" ))
+                    {
+                        var task = Model.MainTaskLists.Find(x => x.Name == dBData.MianTaskUser).Conditions.Where(x => x.TaskType == "2").FirstOrDefault();
+                        var Coordinate = task.Condition.Split(',');
+                        if (Coordinate[0]==args.npc.netID.ToString())
+                        {
+                            dBData.MianTaskData += 1;
+                            Db.UPData(dBData);
+                            player.SendInfoMessage("[主线任务]你击杀了 " + args.npc.FullName + " ,已击杀" + dBData.MianTaskData + "个怪物,任务需要击杀" + Coordinate[1] + "个怪物");
+                        }
+
+                    }
                 }
-                if (Model.RegionalTaskLists.Where(x => x.Name == dBData.RegionalTaskUser).FirstOrDefault().Conditions.Where(x => x.TaskType == "2") != null)
+                if (dBData.RegionalTaskUser != null)
                 {
-                    dBData.RegionalTaskData += 1;
-                    Db.UPData(dBData);
-                    player.SendInfoMessage("你击杀了 " + args.npc.FullName + " ,已击杀" + dBData.RegionalTaskData + "个怪物");
+                    if (Model.RegionalTaskLists.Find(x => x.Name == dBData.RegionalTaskUser).Conditions.Any(x => x.TaskType == "2"))
+                    {
+                        var task = Model.RegionalTaskLists.Find(x => x.Name == dBData.RegionalTaskUser).Conditions.Where(x => x.TaskType == "2").FirstOrDefault();
+                        var Coordinate = task.Condition.Split(',');
+                        if (Coordinate[0] == args.npc.netID.ToString())
+                        {
+                            dBData.RegionalTaskData += 1;
+                            Db.UPData(dBData);
+                            player.SendInfoMessage("[支线任务]你击杀了 " + args.npc.FullName + " ,已击杀" + dBData.RegionalTaskData + "个怪物,任务需要击杀" + Coordinate[1] + "个怪物");
+                        }
+                    }
                 }
-
-
-
-
             }
 
             private void OnInitialize(EventArgs args)
             {
-                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystem, "task","任务")
+                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystem, "task","任务") //测试完成
                 {
                     HelpText = " POBC 任务系统"
                 });
-                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemList, "tasklist","任务列表" )
+                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemList, "tasklist","任务列表" ) //测试完成
                 {
                     HelpText = " POBC 任务系统 所有任务"
                 });
-                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemQuery, "taskquery", "任务查询")
+                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemQuery, "taskquery", "查询任务") //测试完成
                 {
                     HelpText = " POBC 任务系统 通过id或任务名称 查询任务信息"
                 });
-                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemPick, "tasklist", "接受任务")
+                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemPick, "tasklist", "接受任务") //测试完成
                 {
                     HelpText = "接受任务时 随机5项任务选择1项 可以接受单个任务，为了提高任务的难度放弃任务和刷新可接受任务有CD时间 /n 主线任务默认接取"
                 });
-                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemf5, "taskf5", "刷新任务")
+                Commands.ChatCommands.Add(new Command("TaskSystem.user", _TaskSystemf5, "taskf5", "刷新任务")  //测试完成
                 {
                     HelpText = "刷新随机支线任务可接取列表，注意刷新时间冷却 .主线任务不可刷新"
                 });
@@ -130,7 +144,7 @@ namespace POBC.TaskSystem
             {
                 if (args.Parameters.Count < 1)
                 {
-                    args.Player.SendErrorMessage("/查询任务 id或任务名称");
+                    args.Player.SendErrorMessage("语法错误,正确语法: /查询任务 id或任务名称");
                     return;
                 }
                 var AllTask = Model.MainTaskLists.Concat(Model.RegionalTaskLists).ToList<_TaskList>();
@@ -161,48 +175,74 @@ namespace POBC.TaskSystem
                 switch (args.Parameters[0])
                 {
                     case "主线":
-                        if (Model.MainTaskLists.Count == 0)
                         {
-                            args.Player.SendErrorMessage("没有主线任务");
-                            return;
+                            if (Model.MainTaskLists.Count == 0)
+                            {
+                                args.Player.SendErrorMessage("没有主线任务");
+                                return;
+                            }
+                            if (!Db.Queryuser(args.Player.Name))
+                            {
+                                args.Player.SendErrorMessage("没有接受的主线任务");
+                                return;
+                            }
+                            if (Db.QueryData(args.Player.Name).MianTaskUser == null)
+                            {
+                                args.Player.SendErrorMessage("没有接受的主线任务");
+                                return;
+                            }
+                            //获取主线任务 
+                            var _DBData = Db.QueryData(args.Player.Name);
+                            var _MainTask = Model.MainTaskLists.Where(x => x.Name == _DBData.MianTaskUser).FirstOrDefault();
+                            Tasklogic(args, _MainTask);
+
+                            _DBData.MianTaskUser = null;
+                            _DBData.MianTaskData = 0;
+                            _DBData.MianTaskCompleted += 1;
+                            Db.UPData(_DBData);
+                            args.Player.SendErrorMessage("主线任务 完成 : 任务名" + _MainTask.Name + " ID:" + _MainTask.ID);
                         }
-                        if (!Db.Queryuser(args.Player.Name))
-                        {
-                            args.Player.SendErrorMessage("没有接受的主线任务");
-                        }
-                        if (Db.QueryData(args.Player.Name).MianTaskUser == null)
-                        {
-                            args.Player.SendErrorMessage("没有接受的主线任务");
-                        }
-                        //获取主线任务 
-                        var _MainTask = Model.MainTaskLists.Where(x => x.Name == Db.QueryData(args.Player.Name).MianTaskUser).FirstOrDefault();
-                        Tasklogic(args, _MainTask);
                         break;
                     case "支线":
-                        if (Model.RegionalTaskLists.Count == 0)
                         {
-                            args.Player.SendErrorMessage("没有支线任务");
-                            return;
+                            if (Model.RegionalTaskLists.Count == 0)
+                            {
+                                args.Player.SendErrorMessage("没有支线任务");
+                                return;
+                            }
+                            if (!Db.Queryuser(args.Player.Name))
+                            {
+                                args.Player.SendErrorMessage("没有接受的支线任务");
+                                return;
+                            }
+                            if (Db.QueryData(args.Player.Name).RegionalTaskUser == null)
+                            {
+                                args.Player.SendErrorMessage("没有接受的支线任务");
+                                return;
+                            }
+                            //获取支线任务
+                            var _DBData = Db.QueryData(args.Player.Name);
+                            var _RegionalTask = Model.RegionalTaskLists.Where(x => x.Name == Db.QueryData(args.Player.Name).RegionalTaskUser).FirstOrDefault();
+                            if(Tasklogic(args, _RegionalTask))
+                            {
+                                _DBData.RegionalTaskUser = null;
+                                _DBData.RegionalTaskData = 0;
+                                _DBData.RegionalCompleted += 1;
+                                Db.UPData(_DBData);
+                                args.Player.SendErrorMessage("支线任务 完成 : 任务名" + _RegionalTask.Name + " ID:" + _RegionalTask.ID);
+
+                            }
+
                         }
-                        if (!Db.Queryuser(args.Player.Name))
-                        {
-                            args.Player.SendErrorMessage("没有接受的支线任务");
-                        }
-                        if (Db.QueryData(args.Player.Name).RegionalTaskUser == null)
-                        {
-                            args.Player.SendErrorMessage("没有接受的支线任务");
-                        }
-                        //获取支线任务
-                        var _RegionalTask = Model.RegionalTaskLists.Where(x => x.Name == Db.QueryData(args.Player.Name).RegionalTaskUser).FirstOrDefault();
-                        Tasklogic(args, _RegionalTask);
                         break;
+
                 }
                 
                 
             }
             
             //任务判定与任务类型 奖励给予等逻辑核心
-            private void Tasklogic(CommandArgs args ,_TaskList Tasklist)
+            private bool Tasklogic(CommandArgs args ,_TaskList Tasklist)
             {
                 foreach (var item in Tasklist.Conditions)
                 {
@@ -224,16 +264,16 @@ namespace POBC.TaskSystem
                                         else
                                         {
                                             args.Player.SendErrorMessage("没有足够的物品");
-                                            return;
+                                            return false;
                                         }
                                     }
-                                    else
-                                    {
-                                        args.Player.SendErrorMessage("您的背包中没有任务物品：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
-                                        args.Player.SendInfoMessage("任务物品请不要放在背包最上排中");
-                                        return;
-                                    }
+
                                 }
+                                Item _item1 = new Item();
+                                _item1.netID = Convert.ToInt32(_item[0]);
+                                args.Player.SendErrorMessage("您的背包中没有任务物品"+_item1.Name );
+                                args.Player.SendInfoMessage("任务物品请不要放在背包最上排中");
+                                return false;
 
                             }
                             break;
@@ -249,40 +289,41 @@ namespace POBC.TaskSystem
                                     else
                                     {
                                         args.Player.SendErrorMessage("您的背包中没有任务物品：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
-                                        return;
+                                        return false;
                                     }
                                 }
 
                             }
                             break;
-                        //任务类型2 是否击杀指定NPC
+                        //任务类型2 是否击杀指定NPC //测试完成
                         case "2":
                             {
-                                if (Db.QueryData(args.Player.Name).MianTaskData >= int.Parse(item.Condition))
+                                var _item = item.Condition.Split(',');
+                                if (Db.QueryData(args.Player.Name).MianTaskData >= int.Parse(_item[1]) | Db.QueryData(args.Player.Name).RegionalTaskData >= int.Parse(_item[1]))
                                 {
                                     continue;
                                 }
                                 else
                                 {
-                                    args.Player.SendErrorMessage("您没有击杀指定NPC或击杀数量不足：任务数量" + item.Condition + " 实际数量" + Db.QueryData(args.Player.Name).MianTaskData);
-                                    return;
+                                    args.Player.SendErrorMessage("您没有击杀指定NPC或击杀数量不足(" + Main.npc[int.Parse(_item[0])].FullName + ") ：任务数量" + int.Parse(_item[1]) + " 实际数量" + Db.QueryData(args.Player.Name).MianTaskData);
+                                    return false;
                                 }
                             }
-                        //任务类型3 到达指定地图区域
+                        //任务类型3 到达指定地图区域   //测试完成
                         case "3":
                             {
                                 var Coordinate = item.Condition.Split(',');
                                 int x = int.Parse(Coordinate[0]);
                                 int y = int.Parse(Coordinate[1]);
                                 int deviation = int.Parse(Coordinate[2]);
-                                if (args.Player.X >= (x - deviation) && args.Player.X <= (x + deviation) && args.Player.Y >= (y - deviation) && args.Player.Y <= (y + deviation))
+                                if (args.Player.X/16 >= (x - deviation) && args.Player.X/16 <= (x + deviation) && args.Player.Y/16 >= (y - deviation) && args.Player.Y/16 <= (y + deviation))
                                 {
                                     continue;
                                 }
                                 else
                                 {
-                                    args.Player.SendErrorMessage("您没有到达指定地图区域：您的坐标" + args.Player.X + "," + args.Player.Y + " 指定区域" + x + "," + y + " 允许偏差" + deviation);
-                                    return;
+                                    args.Player.SendErrorMessage("您没有到达指定地图区域：您的坐标" + args.Player.X/16 + "," + args.Player.Y/16 + " 指定区域" + x + "," + y + " 允许偏差" + deviation );
+                                    return false;
                                 }
                             }
                         //穿戴或拿起指定装备
@@ -297,7 +338,7 @@ namespace POBC.TaskSystem
                                     else
                                     {
                                         args.Player.SendErrorMessage("您未穿戴或拿起指定装备：" + Main.item[int.Parse(item.Condition)].Name + " " + item.Condition);
-                                        return;
+                                        return false;
                                     }
                                 }
                             }
@@ -312,13 +353,15 @@ namespace POBC.TaskSystem
                                 else
                                 {
                                     args.Player.SendErrorMessage("您没有拥有指定buff： BUFF ID:" + item.Condition);
-                                    return;
+                                    return false;
                                 }
                             }
+
+
                         default:
                             {
                                 args.Player.SendErrorMessage("请确认配置文件中 TaskType 值是否正确");
-                                return;
+                                return false;
 
                             }
                     }
@@ -341,7 +384,7 @@ namespace POBC.TaskSystem
                             else
                             {
                                 args.Player.SendErrorMessage("没有足够的物品");
-                                return;
+                                return false;
                             }
                         }
                     }
@@ -353,22 +396,40 @@ namespace POBC.TaskSystem
                 {
                     Commands.HandleCommand(TSPlayer.Server, item.Replace("{name}", args.Player.Name));
                 }
-                  
+
+                return true;
 
             }
-          
+           
             private void _TaskSystemGive(CommandArgs args)
             {
                 //放弃支线任务
                 if (!Db.Queryuser(args.Player.Name))
                 {
                     args.Player.SendErrorMessage("您没有接受支线任务");
+                    return;
                 }
                 if (Db.QueryData(args.Player.Name).RegionalTaskUser == null)
                 {
                     args.Player.SendErrorMessage("您没有接受支线任务");
+                    return;
+                }
+                if (!Model.RandomTasks.Exists(x=>x.Name==args.Player.Name))
+                {
+                    args.Player.SendErrorMessage("支线任务信息未刷新 请先刷新支线任务");
+                    return;
                 }
                 DateTime now = DateTime.Now;
+                if (!Model.RandomTasks.Exists(x=>x.GiveTime==null))
+                {
+                    Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime = now;
+                    DBData dBData = Db.QueryData(args.Player.Name);
+                    dBData.RegionalTaskUser = null;
+                    dBData.RegionalTaskData = 0;
+                    Db.UPData(dBData);
+                    args.Player.SendWarningMessage("您已放弃任务，CD时间已更新");
+                    return;
+                }
                 if (Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime.AddSeconds(10) < now)
                 {
                     Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime = now;
@@ -377,11 +438,14 @@ namespace POBC.TaskSystem
                     dBData.RegionalTaskData = 0;
                     Db.UPData(dBData);
                     args.Player.SendWarningMessage("您已放弃任务，CD时间已更新");
+                    return;
 
                 }
                 else
                 {
-                    args.Player.SendWarningMessage("放弃任务冷却中 上次放弃时间" + Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime + "CD时间 10S");
+                    TimeSpan ts = Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime.AddSeconds(10) - now;
+                    args.Player.SendWarningMessage("放弃任务冷却中 上次放弃时间" + Model.RandomTasks.Find(t => t.Name == args.Player.Name).GiveTime + "剩余 CD时间 " + ts.Seconds + "秒");
+                    return;
                 }
 
             }
@@ -390,29 +454,37 @@ namespace POBC.TaskSystem
             {
                 if (!Model.RandomTasks.Exists(t => t.Name == args.Player.Name)) //刷新任务
                 {
-                    var Random = getRadom(5, 0, Model.RegionalTaskLists.Count());
+                    var Random = getRadom(5, 1, Model.RegionalTaskLists.Count());
                     Model.RandomTasks.Add(new RandomTask() { Name = args.Player.Name, Reward = Random, F5Time = DateTime.Now});
                     args.Player.SendErrorMessage("任务已刷新");
                     foreach (int item in Random)
                     {
                         args.Player.SendErrorMessage("任务ID" + item + " 任务名称" + Model.RegionalTaskLists.Find(t => t.ID == item).Name + " 任务信息" + Model.RegionalTaskLists.Find(t => t.ID == item).Info );
+                       
                     }
+                    return;
                 }
                 DateTime Date = DateTime.Now;
                 if (Model.RandomTasks.Find(t => t.Name == args.Player.Name).F5Time.AddSeconds(10) < Date)
                 {
                     Model.RandomTasks.Find(t => t.Name == args.Player.Name).F5Time = Date;
-                    var Random = getRadom(5, 0, Model.RegionalTaskLists.Count());
+                    var Random = getRadom(5, 1, Model.RegionalTaskLists.Count());
                     Model.RandomTasks.Find(t => t.Name == args.Player.Name).Reward = Random;
                     args.Player.SendErrorMessage("任务已刷新");
                     foreach (int item in Random)
                     {
                         args.Player.SendErrorMessage("任务ID" + item + " 任务名称" + Model.RegionalTaskLists.Find(t => t.ID == item).Name + " 任务信息" + Model.RegionalTaskLists.Find(t => t.ID == item).Info);
                     }
+                    return;
                 }
                 else
                 {
-                    args.Player.SendErrorMessage("任务刷新时间冷却中");
+
+                    //剩余时间
+                    TimeSpan ts = Model.RandomTasks.Find(t => t.Name == args.Player.Name).F5Time.AddSeconds(10) - Date;
+                    args.Player.SendErrorMessage("任务刷新时间冷却中,剩余时间" + ts.Seconds + "秒");
+                    return;
+
                 }
                 
                 
@@ -423,6 +495,7 @@ namespace POBC.TaskSystem
                 if (args.Parameters.Count < 1)
                 {
                     args.Player.SendErrorMessage("/接受任务 主线 接受主线任务");
+                    args.Player.SendErrorMessage("/接受任务 支线 查看可接受支线任务");
                     args.Player.SendErrorMessage("/接受任务 支线 [任务ID] 接受支线任务");
                     return;
                 }
@@ -444,21 +517,21 @@ namespace POBC.TaskSystem
                                     if (!Db.Queryuser(args.Player.Name))
                                     {
                                         Db.Adduser(new DBData() { UserName = args.Player.Name, MianTaskUser = Model.MainTaskLists[0].Name, MianTaskData = 0, MianTaskCompleted = 0, RegionalTaskUser = null, RegionalTaskData = 0, RegionalCompleted = 0 });
-                                        args.Player.SendErrorMessage("当前接受主线任务为" + Model.MainTaskLists[0].Name);
+                                        args.Player.SendErrorMessage("当前接受主线任务为" + Model.MainTaskLists[0].Name + " 任务ID:"+Model.MainTaskLists[0].ID);
                                         args.Player.SendErrorMessage("任务信息:" + Model.MainTaskLists[0].Info);
                                         return;
                                     }                                    
                                     DBData dBData = Db.QueryData(args.Player.Name);
                                     if (dBData.UserName != null)
                                     {
-                                        args.Player.SendErrorMessage("您已接受任务" + dBData.MianTaskUser + "不能再次领取任务");
+                                        args.Player.SendErrorMessage("您已接受任务" + dBData.MianTaskUser +" 任务ID: "+Model.MainTaskLists[0].ID + " 不能再次领取任务");
                                         args.Player.SendErrorMessage("任务信息:" + Model.MainTaskLists[dBData.RegionalCompleted].Info);
                                         return;
                                     }
                                     dBData.MianTaskUser = Model.MainTaskLists[dBData.MianTaskCompleted].Name;
                                     dBData.MianTaskData = 0;
                                     Db.UPData(dBData);
-                                    args.Player.SendErrorMessage("当前接受主线任务为" + Model.MainTaskLists[dBData.MianTaskCompleted].Name);
+                                    args.Player.SendErrorMessage("当前接受主线任务为" + Model.MainTaskLists[dBData.MianTaskCompleted].Name +" 任务ID:"+ Model.MainTaskLists[dBData.MianTaskCompleted].ID);
                                     args.Player.SendErrorMessage("任务信息:" + Model.MainTaskLists[dBData.MianTaskCompleted].Info);
 
                                     return;
@@ -475,32 +548,42 @@ namespace POBC.TaskSystem
                         }
                     case "支线":
                         {
-
+                            if (Model.MainTaskLists.Count() == 0)
+                            {
+                                args.Player.SendErrorMessage("没有支线任务");
+                                return;
+                            }
+                            if (args.Parameters.Count == 1)
+                            {
+                                if (!Model.RandomTasks.Exists(t => t.Name == args.Player.Name)) //刷新任务
+                                {
+                                    //var Random = getRadom(5, 0, Model.RegionalTaskLists.Count());
+                                    //Model.RandomTasks.Add(new RandomTask() { Name = args.Player.Name, Reward = Random, F5Time = DateTime.Now });
+                                    args.Player.SendErrorMessage("随机任务未刷新，请先刷新随机任务列表");
+                                    return;
+                                }
+                                args.Player.SendErrorMessage("当前可接受支线任务为:");
+                                foreach (int item in Model.RandomTasks.Find(x=>x.Name==args.Player.Name).Reward)
+                                {
+                                    args.Player.SendErrorMessage("任务ID" + item + " 任务名称" + Model.RegionalTaskLists.Find(t => t.ID == item).Name + " 任务信息" + Model.RegionalTaskLists.Find(t => t.ID == item).Info);
+                                   
+                                }
+                                return;
+                            }
                             //接受支线任务
                             if (args.Parameters.Count == 2)
                             {
-                                if (!int.TryParse(args.Parameters[2], out int tmp))
+                                if (!int.TryParse(args.Parameters[1], out int tmp))
                                 {
                                     args.Player.SendErrorMessage("请输入正确的任务ID");
                                     return;
                                 }
 
-                                if (Model.MainTaskLists.Count() == 0)
-                                {
-                                    args.Player.SendErrorMessage("没有支线任务");
-                                    return;
-                                }
                                 //接受任务
                                 try
                                 {
-                                    if (!Model.RandomTasks.Exists(t => t.Name == args.Player.Name)) //刷新任务
-                                    {
-                                        //var Random = getRadom(5, 0, Model.RegionalTaskLists.Count());
-                                        //Model.RandomTasks.Add(new RandomTask() { Name = args.Player.Name, Reward = Random, F5Time = DateTime.Now });
-                                        args.Player.SendErrorMessage("随机任务未刷新，请先刷新随机任务列表");
-                                        return;
-                                    }
-                                    if (!Model.RandomTasks.Find(t => t.Name == args.Player.Name).Reward.Contains(args.Parameters[2]))
+                                    int taskid = int.Parse(args.Parameters[1]);
+                                    if (!Model.RandomTasks.Find(t => t.Name == args.Player.Name).Reward.Contains(taskid))
                                     {
                                         args.Player.SendErrorMessage("请输入正确的任务ID");
                                         return;
@@ -508,26 +591,26 @@ namespace POBC.TaskSystem
                                     //查询数据库没有用户时添加用户
                                     if (!Db.Queryuser(args.Player.Name))
                                     {
-                                        Db.Adduser(new DBData() { UserName = args.Player.Name, MianTaskUser = null, MianTaskData = 0, MianTaskCompleted = 0, RegionalTaskUser = Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Name, RegionalTaskData = 0, RegionalCompleted = 0 });
-                                        args.Player.SendErrorMessage("当前接受支线任务为" + Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Name);
-                                        args.Player.SendErrorMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Info);
+                                        Db.Adduser(new DBData() { UserName = args.Player.Name, MianTaskUser = null, MianTaskData = 0, MianTaskCompleted = 0, RegionalTaskUser = Model.RegionalTaskLists.Find(t => t.ID == taskid).Name, RegionalTaskData = 0, RegionalCompleted = 0 });
+                                        args.Player.SendInfoMessage("当前接受支线任务为" + Model.RegionalTaskLists.Find(t => t.ID == taskid).Name);
+                                        args.Player.SendInfoMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == taskid).Info);
                                         return;
                                     }
                                     DBData dBData = Db.QueryData(args.Player.Name);
                                     if (dBData.RegionalTaskUser != null)
                                     {
-                                        args.Player.SendErrorMessage("您已接受任务" + dBData.RegionalTaskUser + "不能再次领取任务");
+                                        args.Player.SendInfoMessage("您已接受任务" + dBData.RegionalTaskUser + "不能再次领取任务");
 
-                                         args.Player.SendErrorMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Info);
+                                         args.Player.SendInfoMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == taskid).Info);
    
                                         
                                         return;
                                     }
-                                    dBData.RegionalTaskUser = Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Name;
+                                    dBData.RegionalTaskUser = Model.RegionalTaskLists.Find(t => t.ID == taskid).Name;
                                     dBData.RegionalTaskData = 0;
                                     Db.UPData(dBData);
-                                    args.Player.SendErrorMessage("当前接受支线任务为" + Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Name);
-                                    args.Player.SendErrorMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == int.Parse(args.Parameters[2])).Info);
+                                    args.Player.SendInfoMessage("当前接受支线任务为" + Model.RegionalTaskLists.Find(t => t.ID == taskid).Name);
+                                    args.Player.SendInfoMessage("任务信息:" + Model.RegionalTaskLists.Find(t => t.ID == taskid).Info);
                                     return;
 
                                 }
@@ -537,7 +620,11 @@ namespace POBC.TaskSystem
                                     TShock.Log.ConsoleError("[POBCTask] 任务接受失败!\n{0}".SFormat(ex.ToString()));
                                     throw;
                                 }
-                               
+
+                            }
+                            else
+                            {
+                                args.Player.SendErrorMessage("语法错误 正确语法 /接受任务 支线 <任务ID>");
                             }
                             break;
 
@@ -571,7 +658,7 @@ namespace POBC.TaskSystem
             {
                 if (args.Parameters.Count < 1)
                 {
-                    args.Player.SendErrorMessage("/任务列表 主线 [page] 或者 /task list main [page]显示主线任务 \r\n /任务列表 支线 [页数]或者 /task list Regional [page]显示支线任务");
+                    args.Player.SendErrorMessage("/任务列表 主线 [页数] 或者 /task list main [page]显示主线任务 \r\n/任务列表 支线 [页数]或者 /task list Regional [page]显示支线任务");
                     return;
                 }
                 switch (args.Parameters[0])
@@ -589,7 +676,7 @@ namespace POBC.TaskSystem
                             {
                                 if (!int.TryParse(args.Parameters[1], out page))
                                 {
-                                    args.Player.SendErrorMessage("/任务列表 主线 [page] 或者 /task list main [page]显示主线任务 \r\n /任务列表 支线 [页数]或者 /task list Regional [page]显示支线任务");
+                                    args.Player.SendErrorMessage("/任务列表 主线 [页数] 或者 /task list main [page]显示主线任务 \r\n/任务列表 支线 [页数]或者 /task list Regional [page]显示支线任务");
                                     return;
                                 }
                             }
@@ -609,7 +696,7 @@ namespace POBC.TaskSystem
                                 {
                                     break;
                                 }
-                                args.Player.SendInfoMessage("任务:" + Model.MainTaskLists[i].Name + " 奖励" + string.Join("",Model.MainTaskLists[i].Reward));
+                                args.Player.SendInfoMessage("任务ID " + Model.MainTaskLists[i].ID +" 任务名: " + Model.MainTaskLists[i].Name + " 简略描述: " + Model.MainTaskLists[i].Info);
                             }
                             break;
                         }
@@ -626,7 +713,7 @@ namespace POBC.TaskSystem
                             {
                                 if (!int.TryParse(args.Parameters[1], out page))
                                 {
-                                    args.Player.SendErrorMessage("/任务列表 主线 [page] 或者 /task list main [page]显示主线任务 \r\n /任务列表 支线 [页数]或者 /task list Regional [page]显示支线任务");
+                                    args.Player.SendErrorMessage("/任务列表 主线 [页数] 或者 /task list main [page]显示主线任务 \r\n/任务列表 支线 [页数]或者 /task list Regional [page]显示支线任务");
                                     return;
                                 }
                             }
@@ -646,7 +733,7 @@ namespace POBC.TaskSystem
                                 {
                                     break;
                                 }
-                                args.Player.SendInfoMessage("任务: " + Model.RegionalTaskLists[i].Name + " 奖励: " + string.Join("", Model.RegionalTaskLists[i].Reward));
+                                args.Player.SendInfoMessage("任务ID: " + Model.RegionalTaskLists[i].ID +" 任务名: " + Model.RegionalTaskLists[i].Name + " 简略描述: " + Model.RegionalTaskLists[i].Info );
                             }
                             break;
                             
@@ -654,7 +741,7 @@ namespace POBC.TaskSystem
 
                         }
                     default:
-                        { args.Player.SendErrorMessage("/任务列表 主线 [page] 显示主线任务 \r\n /任务列表 支线 [页数] 显示支线任务"); }
+                        { args.Player.SendErrorMessage("语法错误，正确语法：/任务列表 主线 [页数] 显示主线任务 \r\n/任务列表 支线 [页数] 显示支线任务"); }
                         break;
                 }
    
@@ -667,7 +754,7 @@ namespace POBC.TaskSystem
             {
                 if (args.Parameters.Count < 1)
                 {
-                    args.Player.SendErrorMessage("命令如下\r\n/任务列表.\r\n/接受任务 任务类型 [任务ID]\r\n/刷新任务  -刷新支线可接受任务列表\r\n/完成任务  -完成任务\r\n/放弃任务 -放弃任务\r\n");
+                    args.Player.SendErrorMessage("命令如下 /任务列表 /接受任务 /刷新任务 /完成任务 /放弃任务");
                     return;
                 }
 

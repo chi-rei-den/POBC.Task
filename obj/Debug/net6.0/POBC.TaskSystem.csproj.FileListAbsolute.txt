@@ -1,0 +1,11 @@
+C:\Users\cy332\Desktop\Tshock4.5.17\ServerPlugins\net6.0\HttpServer.dll
+C:\Users\cy332\Desktop\Tshock4.5.17\ServerPlugins\net6.0\TaskSystem.deps.json
+C:\Users\cy332\Desktop\Tshock4.5.17\ServerPlugins\net6.0\TaskSystem.dll
+C:\Users\cy332\Desktop\Tshock4.5.17\ServerPlugins\net6.0\TaskSystem.pdb
+F:\仓库\GitHub\pobccore\POBC.Task\obj\Debug\net6.0\POBC.TaskSystem.csproj.AssemblyReference.cache
+F:\仓库\GitHub\pobccore\POBC.Task\obj\Debug\net6.0\POBC.TaskSystem.GeneratedMSBuildEditorConfig.editorconfig
+F:\仓库\GitHub\pobccore\POBC.Task\obj\Debug\net6.0\POBC.TaskSystem.csproj.CoreCompileInputs.cache
+F:\仓库\GitHub\pobccore\POBC.Task\obj\Debug\net6.0\TaskSystem.dll
+F:\仓库\GitHub\pobccore\POBC.Task\obj\Debug\net6.0\refint\TaskSystem.dll
+F:\仓库\GitHub\pobccore\POBC.Task\obj\Debug\net6.0\TaskSystem.pdb
+F:\仓库\GitHub\pobccore\POBC.Task\obj\Debug\net6.0\ref\TaskSystem.dll
